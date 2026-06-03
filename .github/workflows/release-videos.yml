@@ -1,0 +1,42 @@
+name: Release MP4s
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "**.mp4"
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Rename MP4s to sequential order
+        run: |
+          i=1
+          # sort so order is consistent on every run
+          find . -name "*.mp4" | sort | while read f; do
+            cp "$f" "/tmp/${i}.mp4"
+            i=$((i + 1))
+          done
+
+      - name: Delete existing latest release (if any)
+        run: |
+          gh release delete latest --yes || true
+          git push origin :refs/tags/latest || true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create release and upload renamed MP4s
+        run: |
+          gh release create latest \
+            --title "Video Assets" \
+            --notes "Auto-updated on every push. Files are named 1.mp4, 2.mp4 ..." \
+            /tmp/*.mp4
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
