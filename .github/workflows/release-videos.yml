@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - "**.mp4"
+  workflow_dispatch:  # enables manual "Run workflow" button on GitHub
 
 jobs:
   release:
@@ -19,16 +20,18 @@ jobs:
       - name: Rename MP4s to sequential order
         run: |
           i=1
-          # sort so order is consistent on every run
           find . -name "*.mp4" | sort | while read f; do
             cp "$f" "/tmp/${i}.mp4"
             i=$((i + 1))
           done
+          # verify files were copied
+          echo "Files to upload:"
+          ls /tmp/*.mp4
 
       - name: Delete existing latest release (if any)
         run: |
-          gh release delete latest --yes || true
-          git push origin :refs/tags/latest || true
+          gh release delete latest --yes 2>/dev/null || echo "No existing release to delete"
+          git push origin :refs/tags/latest 2>/dev/null || echo "No existing tag to delete"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -36,7 +39,7 @@ jobs:
         run: |
           gh release create latest \
             --title "Video Assets" \
-            --notes "Auto-updated on every push. Files are named 1.mp4, 2.mp4 ..." \
+            --notes "Auto-updated on every push. Files named 1.mp4, 2.mp4 ..." \
             /tmp/*.mp4
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
